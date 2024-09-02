@@ -1,7 +1,7 @@
 package models
 
 type Post struct {
-	Id            int    `json:"id"`
+	Id            string `json:"id"`
 	Author        string `json:"author"`
 	ShareState    string `json:"shareState"`
 	Likes         int    `json:"likes"`

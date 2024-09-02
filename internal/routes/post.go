@@ -5,7 +5,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func Setup(app *fiber.App) {
+func PostsRoutesSetup(app *fiber.App) {
 	app.Get("/posts", handlers.GetPosts)
 	app.Post("/posts", handlers.CreatePost)
 }
