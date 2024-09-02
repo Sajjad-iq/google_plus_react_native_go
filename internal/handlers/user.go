@@ -8,37 +8,38 @@ import (
 )
 
 func FilterUserLogin(c *fiber.Ctx) error {
-	user := new(models.User)
+	var user models.User
 
 	// Parse the incoming JSON request into the user struct
-	if err := c.BodyParser(user); err != nil {
+	if err := c.BodyParser(&user); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Cannot parse JSON",
+			"error": "Failed to parse request body",
 		})
 	}
 
-	// Check if the user exists
-	existsUserData, isUserExists := services.IsUserExist(user.ID)
-
-	if !isUserExists {
-		// Create the user if it doesn't exist
-		if err := storage.CreateUser(*user); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Could not create user",
-			})
-		}
-	} else {
-		// Compare and update user data if necessary
-		if err := services.UpdateUserChanges(existsUserData, user); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Could not update user",
-			})
-		}
-	}
+	// Check if the user exists in the database
+	existingUser, isUserExists := services.IsUserExist(user.ID)
 
 	if isUserExists {
-		return c.Status(fiber.StatusCreated).JSON(existsUserData)
-	} else {
-		return c.Status(fiber.StatusCreated).JSON(user)
+		// Compare and update user data if necessary
+		_, hasChanges := services.CompareUserData(existingUser, &user)
+		if hasChanges {
+			// Apply the changes to the existing user and update the database
+			if err := storage.UpdateUser(*existingUser); err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"error": "Failed to update user data",
+				})
+			}
+		}
+		return c.Status(fiber.StatusOK).JSON(existingUser)
 	}
+
+	// Create a new user if it doesn't exist
+	if err := storage.CreateUser(user); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to create user",
+		})
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(user)
 }

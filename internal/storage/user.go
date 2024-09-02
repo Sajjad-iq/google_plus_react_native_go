@@ -5,7 +5,8 @@ import (
 	"github.com/Sajjad-iq/google_plus_react_native_go/internal/models"
 )
 
-// CreateUser saves a user to the database and returns an error if it fails.
+// CreateUser inserts a new user record into the database.
+// It returns an error if the operation fails.
 func CreateUser(user models.User) error {
 	if err := database.DB.Create(&user).Error; err != nil {
 		return err
@@ -13,24 +14,26 @@ func CreateUser(user models.User) error {
 	return nil
 }
 
-// FindUserByID finds a user by their ID and returns the user object and an error if any.
+// FindUserByID retrieves a user by their ID from the database.
+// It returns a pointer to the user object and an error, if any occurred during the operation.
 func FindUserByID(id string) (*models.User, error) {
 	var user models.User
 
 	// Query the database for the user by ID
 	err := database.DB.Where("id = ?", id).First(&user).Error
 	if err != nil {
-		// Return nil user and nil error if no record is found
+		// If the user is not found or another error occurs, return nil and the error
 		return nil, err
 	}
+
 	// Return the user and nil error if found successfully
 	return &user, nil
 }
 
-// UpdateUser updates an existing user in the database and returns an error if it fails.
+// UpdateUser updates an existing user record in the database.
+// It returns an error if the operation fails.
 func UpdateUser(user models.User) error {
-	// Use the Save method to update the user record.
-	// This method will perform an update if the primary key exists.
+	// Save the user record to the database. This will update the existing record if the primary key exists.
 	if err := database.DB.Save(&user).Error; err != nil {
 		return err
 	}
