@@ -33,6 +33,12 @@ func Connect() {
 	fmt.Println("Database connection successfully established")
 
 	AutoMigrate(&models.User{})
+	err = DB.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"").Error
+	if err != nil {
+		log.Fatal("Failed to enable uuid-ossp extension:", err)
+	}
+	AutoMigrate(&models.Post{})
+
 }
 
 func AutoMigrate(models ...interface{}) {

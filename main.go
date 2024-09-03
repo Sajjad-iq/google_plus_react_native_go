@@ -30,6 +30,7 @@ func main() {
 	// Set up the routes
 	routes.PostsRoutesSetup(app)
 	routes.UsersRoutesSetup(app)
+	routes.AuthRoutesSetup(app)
 
 	// Start the server
 	log.Fatal(app.Listen(":4000"))

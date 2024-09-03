@@ -7,7 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func FilterUserLogin(c *fiber.Ctx) error {
+func FilterUser(c *fiber.Ctx) error {
 	var user models.User
 
 	// Parse the incoming JSON request into the user struct
@@ -22,16 +22,13 @@ func FilterUserLogin(c *fiber.Ctx) error {
 
 	if isUserExists {
 		// Compare and update user data if necessary
-		_, hasChanges := services.CompareUserData(existingUser, &user)
-		if hasChanges {
-			// Apply the changes to the existing user and update the database
-			if err := storage.UpdateUser(*existingUser); err != nil {
-				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-					"error": "Failed to update user data",
-				})
-			}
+		updatedUser, err := services.UpdateUserNameAndAvatar(existingUser, &user)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to update user",
+			})
 		}
-		return c.Status(fiber.StatusOK).JSON(existingUser)
+		return c.Status(fiber.StatusOK).JSON(updatedUser)
 	}
 
 	// Create a new user if it doesn't exist

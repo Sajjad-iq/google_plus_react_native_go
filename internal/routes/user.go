@@ -6,5 +6,5 @@ import (
 )
 
 func UsersRoutesSetup(app *fiber.App) {
-	app.Post("/login", func(c *fiber.Ctx) error { return handlers.FilterUserLogin(c) })
+	app.Post("/test", func(c *fiber.Ctx) error { return handlers.OAuthUserLogin(c) })
 }
