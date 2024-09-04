@@ -7,7 +7,7 @@ import (
 
 func PostsRoutesSetup(app *fiber.App) {
 
-	app.Post("/posts", func(c *fiber.Ctx) error {
+	app.Post("/create-post", func(c *fiber.Ctx) error {
 		return handlers.CreatePost(c)
 	})
 }

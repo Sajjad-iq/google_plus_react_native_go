@@ -14,7 +14,7 @@ type Post struct {
 	AuthorAvatar   string         `json:"author_avatar"`
 	Body           string         `json:"body"`
 	ImageURL       string         `json:"image_url"`
-	ShareState     string         `json:"share_state"`
+	ShareState     string         `gorm:"default:Public" json:"share_state"`
 	LikesCount     int            `gorm:"default:0" json:"likes_count"`
 	CommentsCount  int            `gorm:"default:0" json:"comments_count"`
 	Hashtags       pq.StringArray `gorm:"type:text[]" json:"hashtags"`

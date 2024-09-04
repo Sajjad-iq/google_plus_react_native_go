@@ -5,14 +5,17 @@ import (
 
 	"github.com/Sajjad-iq/google_plus_react_native_go/internal/database"
 	"github.com/Sajjad-iq/google_plus_react_native_go/internal/routes"
+	"github.com/Sajjad-iq/google_plus_react_native_go/middleware"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors" // Import the CORS middleware
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/joho/godotenv"
 )
 
 func main() {
 	// Load environment variables from .env file
-	godotenv.Load()
+	if err := godotenv.Load(); err != nil {
+		log.Fatalf("Error loading .env file: %v", err)
+	}
 
 	// Connect to the database
 	database.Connect()
@@ -20,12 +23,15 @@ func main() {
 	// Set up the Fiber app
 	app := fiber.New()
 
-	// Configure CORS to allow requests from any origin
+	// Configure CORS
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*", // Allow any origin
+		AllowOrigins: "*",
 		AllowMethods: "GET,POST,PUT,DELETE,OPTIONS",
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
 	}))
+
+	// Register the Logger middleware
+	app.Use(middleware.Logger)
 
 	// Set up the routes
 	routes.PostsRoutesSetup(app)
