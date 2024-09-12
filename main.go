@@ -37,6 +37,7 @@ func main() {
 	routes.PostsRoutesSetup(app)
 	routes.UsersRoutesSetup(app)
 	routes.AuthRoutesSetup(app)
+	app.Static("/uploads", "./uploads")
 
 	// Start the server
 	log.Fatal(app.Listen(":4000"))

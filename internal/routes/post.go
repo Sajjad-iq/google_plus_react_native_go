@@ -10,4 +10,14 @@ func PostsRoutesSetup(app *fiber.App) {
 	app.Post("/create-post", func(c *fiber.Ctx) error {
 		return handlers.CreatePost(c)
 	})
+
+	app.Get("/posts", func(c *fiber.Ctx) error {
+		return handlers.GetPosts(c)
+	})
+
+	app.Get("/posts/:id", func(c *fiber.Ctx) error {
+		return handlers.GetPostByID(c)
+	})
+
+	app.Put("/posts/:id/like", handlers.LikePost)
 }
