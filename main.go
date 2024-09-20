@@ -6,6 +6,7 @@ import (
 	"github.com/Sajjad-iq/google_plus_react_native_go/internal/database"
 	"github.com/Sajjad-iq/google_plus_react_native_go/internal/routes"
 	"github.com/Sajjad-iq/google_plus_react_native_go/middleware"
+	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/joho/godotenv"
@@ -39,6 +40,9 @@ func main() {
 	routes.AuthRoutesSetup(app)
 	app.Static("/uploads", "./uploads")
 
+	app.Use(jwtware.New(jwtware.Config{
+		SigningKey: jwtware.SigningKey{Key: []byte("secret")},
+	}))
 	// Start the server
 	log.Fatal(app.Listen(":4000"))
 }
