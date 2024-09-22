@@ -9,10 +9,32 @@ import (
 	"github.com/Sajjad-iq/google_plus_react_native_go/internal/services"
 	"github.com/Sajjad-iq/google_plus_react_native_go/internal/storage"
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
+// Helper function for checking user authentication
+func ValidateRequest(c *fiber.Ctx) (string, error) {
+	user := c.Locals("user").(*jwt.Token)
+	claims := user.Claims.(jwt.MapClaims)
+
+	// Ensure the 'id' exists in the token claims
+	id, idOk := claims["id"].(string)
+	if !idOk || id == "" {
+		return "", fmt.Errorf("unauthorized user")
+	}
+	return id, nil
+}
+
 func DeletePost(c *fiber.Ctx) error {
+	// Ensure the user is authenticated
+	id, err := ValidateRequest(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized user",
+		})
+	}
+
 	// Get the post ID
 	postID := c.Params("id")
 	uuid, err := uuid.Parse(postID)
@@ -30,10 +52,19 @@ func DeletePost(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"message": "Post deleted successfully",
+		"message": fmt.Sprintf("Post deleted successfully by user %s", id),
 	})
 }
+
 func GetPostByID(c *fiber.Ctx) error {
+	// Ensure the user is authenticated
+	_, err := ValidateRequest(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized user",
+		})
+	}
+
 	// Get the post ID from the URL parameters
 	postID := c.Params("id")
 	uuid, err := uuid.Parse(postID)
@@ -56,11 +87,9 @@ func GetPostByID(c *fiber.Ctx) error {
 }
 
 func LikePost(c *fiber.Ctx) error {
-	// Get the user from the JWT token
-	userID := c.Locals("user").(string)
-
 	// Ensure the user is authenticated
-	if userID == "" {
+	userID, err := ValidateRequest(c)
+	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Unauthorized user",
 		})
@@ -95,7 +124,16 @@ func LikePost(c *fiber.Ctx) error {
 		"likes_count": post.LikesCount,
 	})
 }
+
 func GetPosts(c *fiber.Ctx) error {
+	// Ensure the user is authenticated
+	_, err := ValidateRequest(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized user",
+		})
+	}
+
 	// Get the limit from query parameters, default to 10 if not provided
 	limitParam := c.Query("limit", "10")
 
@@ -116,11 +154,19 @@ func GetPosts(c *fiber.Ctx) error {
 		})
 	}
 
-	// Return posts as JSON
+	// Return the posts as JSON
 	return c.Status(fiber.StatusOK).JSON(posts)
 }
 
 func CreatePost(c *fiber.Ctx) error {
+	// Ensure the user is authenticated
+	_, err := ValidateRequest(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized user",
+		})
+	}
+
 	// Parse form data
 	form, err := c.MultipartForm()
 	if err != nil {

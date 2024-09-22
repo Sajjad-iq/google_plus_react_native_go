@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/Sajjad-iq/google_plus_react_native_go/internal/database"
 	"github.com/Sajjad-iq/google_plus_react_native_go/internal/routes"
@@ -17,6 +18,8 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Fatalf("Error loading .env file: %v", err)
 	}
+
+	jwt_secret := os.Getenv("JWT_SECRET_KEY")
 
 	// Connect to the database
 	database.Connect()
@@ -34,15 +37,23 @@ func main() {
 	// Register the Logger middleware
 	app.Use(middleware.Logger)
 
-	// Set up the routes
-	routes.PostsRoutesSetup(app)
-	routes.UsersRoutesSetup(app)
+	// Routes that don’t require authentication (like auth routes)
 	routes.AuthRoutesSetup(app)
+	// Serve static files (uploads)
 	app.Static("/uploads", "./uploads")
 
+	// Use JWT middleware for protected routes
+	// Only apply JWT for routes that need it
 	app.Use(jwtware.New(jwtware.Config{
-		SigningKey: jwtware.SigningKey{Key: []byte("secret")},
+		SigningKey:  jwtware.SigningKey{Key: []byte(jwt_secret)},
+		TokenLookup: "header:Authorization",
+		AuthScheme:  "Bearer",
 	}))
+
+	// Protected routes
+	routes.PostsRoutesSetup(app)
+	routes.UsersRoutesSetup(app)
+
 	// Start the server
 	log.Fatal(app.Listen(":4000"))
 }
