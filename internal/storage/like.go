@@ -9,29 +9,44 @@ import (
 
 // CreatePost creates a new post in the database
 
-func ToggleLike(post *models.Post, userID string) error {
-	// Check if user has already liked the post
+func ToggleLike(post *models.Post, userID string) (bool, error) {
 	var existingLike models.Like
-	err := database.DB.Where("post_id = ? AND user_id = ?", post.ID, userID).First(&existingLike).Error
 
+	// Check if the user has already liked the post
+	err := database.DB.Where("post_id = ? AND user_id = ?", post.ID, userID).First(&existingLike).Error
 	if err == nil {
 		// User has already liked the post, remove like
 		if err := database.DB.Delete(&existingLike).Error; err != nil {
-			return fmt.Errorf("failed to remove like: %w", err)
+			return false, fmt.Errorf("failed to remove like: %w", err)
 		}
+
+		// Decrement the like count
 		post.LikesCount--
-	} else {
-		// User has not liked the post, add a new like
-		newLike := models.Like{
-			UserID: userID,
-			PostID: post.ID,
+
+		// Update the post in the database
+		if err := UpdatePost(post); err != nil {
+			return false, fmt.Errorf("failed to update post after removing like: %w", err)
 		}
-		if err := database.DB.Create(&newLike).Error; err != nil {
-			return fmt.Errorf("failed to add like: %w", err)
-		}
-		post.LikesCount++
+
+		return false, nil // Returning false to indicate the post is now unliked
 	}
 
-	// Update post in the database
-	return UpdatePost(post)
+	// If the user hasn't liked the post yet, add a new like
+	newLike := models.Like{
+		UserID: userID,
+		PostID: post.ID,
+	}
+	if err := database.DB.Create(&newLike).Error; err != nil {
+		return false, fmt.Errorf("failed to add like: %w", err)
+	}
+
+	// Increment the like count
+	post.LikesCount++
+
+	// Update the post in the database
+	if err := UpdatePost(post); err != nil {
+		return false, fmt.Errorf("failed to update post after adding like: %w", err)
+	}
+
+	return true, nil // Returning true to indicate the post is now liked
 }

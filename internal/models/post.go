@@ -21,4 +21,5 @@ type Post struct {
 	MentionedUsers pq.Int32Array  `gorm:"type:int[]" json:"mentioned_users"`
 	CreatedAt      time.Time      `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt      time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
+	YourLike       bool           `json:"your_like"` // Computed at runtime
 }

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/Sajjad-iq/google_plus_react_native_go/internal/database"
+	"github.com/Sajjad-iq/google_plus_react_native_go/internal/models"
 	"github.com/Sajjad-iq/google_plus_react_native_go/internal/services"
 	"github.com/Sajjad-iq/google_plus_react_native_go/internal/storage"
 	"github.com/gofiber/fiber/v2"
@@ -58,7 +60,7 @@ func DeletePost(c *fiber.Ctx) error {
 
 func GetPostByID(c *fiber.Ctx) error {
 	// Ensure the user is authenticated
-	_, err := ValidateRequest(c)
+	userID, err := ValidateRequest(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Unauthorized user",
@@ -82,7 +84,17 @@ func GetPostByID(c *fiber.Ctx) error {
 		})
 	}
 
-	// Return the post as JSON
+	// Check if the user has liked the post
+	var like models.Like
+	err = database.DB.Where("post_id = ? AND user_id = ?", post.ID, userID).First(&like).Error
+	if err == nil {
+		// User has liked the post
+		post.YourLike = true
+	} else {
+		post.YourLike = false
+	}
+
+	// Return the post with the 'YourLike' field included
 	return c.Status(fiber.StatusOK).JSON(post)
 }
 
@@ -113,7 +125,9 @@ func LikePost(c *fiber.Ctx) error {
 	}
 
 	// Toggle the like state based on the user
-	if err := storage.ToggleLike(post, userID); err != nil {
+	// Toggle the like state based on the user
+	liked, err := storage.ToggleLike(post, userID) // Modify to return like status
+	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to update like status",
 		})
@@ -122,12 +136,13 @@ func LikePost(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"message":     "Post like state updated successfully",
 		"likes_count": post.LikesCount,
+		"liked":       liked,
 	})
 }
 
 func GetPosts(c *fiber.Ctx) error {
 	// Ensure the user is authenticated
-	_, err := ValidateRequest(c)
+	userID, err := ValidateRequest(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Unauthorized user",
@@ -136,11 +151,8 @@ func GetPosts(c *fiber.Ctx) error {
 
 	// Get the limit from query parameters, default to 10 if not provided
 	limitParam := c.Query("limit", "10")
-
-	// Convert the limit from string to integer
 	limit, err := strconv.Atoi(limitParam)
 	if err != nil || limit <= 0 {
-		// Handle invalid limit input
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid limit parameter",
 		})
@@ -152,6 +164,29 @@ func GetPosts(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to retrieve posts",
 		})
+	}
+
+	// Fetch the likes for the current user in bulk
+	var likes []models.Like
+	err = database.DB.Where("user_id = ?", userID).Find(&likes).Error
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to retrieve likes",
+		})
+	}
+
+	likedPostIDs := make(map[uuid.UUID]bool)
+	for _, like := range likes {
+		likedPostIDs[like.PostID] = true
+	}
+
+	// Set 'YourLike' for each post
+	for i := range posts {
+		if likedPostIDs[posts[i].ID] {
+			posts[i].YourLike = true
+		} else {
+			posts[i].YourLike = false
+		}
 	}
 
 	// Return the posts as JSON
