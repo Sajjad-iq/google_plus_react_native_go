@@ -97,6 +97,12 @@ func FetchComments(c *fiber.Ctx) error {
 		})
 	}
 
-	// Return the list of comments in the response
-	return c.Status(fiber.StatusOK).JSON(comments)
+	// Determine if "stop" should be true (i.e., when the number of comments fetched is less than the limit)
+	stop := len(comments) < limit
+
+	// Return the list of comments and stop flag in the response
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"stop":     stop,     // true if no more data to load, false otherwise
+		"comments": comments, // the fetched comments
+	})
 }

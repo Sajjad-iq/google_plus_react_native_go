@@ -5,6 +5,7 @@ import (
 
 	"github.com/Sajjad-iq/google_plus_react_native_go/internal/database"
 	"github.com/Sajjad-iq/google_plus_react_native_go/internal/models"
+	"github.com/google/uuid"
 )
 
 // CreatePost creates a new post in the database
@@ -49,4 +50,11 @@ func ToggleLike(post *models.Post, userID string) (bool, error) {
 	}
 
 	return true, nil // Returning true to indicate the post is now liked
+}
+
+func DeleteLikesByPostID(postID uuid.UUID) error {
+	if err := database.DB.Where("post_id = ?", postID).Delete(&models.Like{}).Error; err != nil {
+		return fmt.Errorf("could not delete likes for post %v: %w", postID, err)
+	}
+	return nil
 }

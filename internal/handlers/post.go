@@ -37,7 +37,7 @@ func DeletePost(c *fiber.Ctx) error {
 		})
 	}
 
-	// Get the post ID
+	// Get the post ID from the URL
 	postID := c.Params("id")
 	uuid, err := uuid.Parse(postID)
 	if err != nil {
@@ -46,7 +46,21 @@ func DeletePost(c *fiber.Ctx) error {
 		})
 	}
 
-	// Delete the post
+	// Delete all associated likes for the post
+	if err := storage.DeleteLikesByPostID(uuid); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to delete post likes",
+		})
+	}
+
+	// Delete all associated comments for the post
+	if err := storage.DeleteCommentsByPostID(uuid); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to delete post comments",
+		})
+	}
+
+	// Delete the post itself
 	if err := storage.DeletePost(uuid); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to delete post",
@@ -189,8 +203,13 @@ func GetPosts(c *fiber.Ctx) error {
 		}
 	}
 
+	stop := len(posts) < limit
+
 	// Return the posts as JSON
-	return c.Status(fiber.StatusOK).JSON(posts)
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"stop":  stop,  // true if no more data to load, false otherwise
+		"posts": posts, // the fetched posts
+	})
 }
 
 func CreatePost(c *fiber.Ctx) error {
