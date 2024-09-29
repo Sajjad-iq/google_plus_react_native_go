@@ -22,6 +22,7 @@ func PostsRoutesSetup(app *fiber.App) {
 	app.Put("/posts/:id/like", handlers.LikePost)
 	app.Delete("/posts/:id", handlers.DeletePost)
 
+	app.Delete("/posts/:id/comment", handlers.DeleteComment)
 	app.Put("/posts/:id/comment", handlers.CreateComment)
 	app.Get("/posts/comment/:id", handlers.FetchComments)
 }

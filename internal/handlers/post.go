@@ -30,7 +30,7 @@ func ValidateRequest(c *fiber.Ctx) (string, error) {
 
 func DeletePost(c *fiber.Ctx) error {
 	// Ensure the user is authenticated
-	id, err := ValidateRequest(c)
+	userID, err := ValidateRequest(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Unauthorized user",
@@ -39,36 +39,51 @@ func DeletePost(c *fiber.Ctx) error {
 
 	// Get the post ID from the URL
 	postID := c.Params("id")
-	uuid, err := uuid.Parse(postID)
+	postUUID, err := uuid.Parse(postID)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid post ID",
 		})
 	}
 
+	// Fetch the post from the database
+	post, err := storage.GetPostByID(postUUID)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": "Post not found",
+		})
+	}
+
+	// Check if the authenticated user is the author of the post
+	if post.AuthorID != userID {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"error": "You are not authorized to delete this post",
+		})
+	}
+
 	// Delete all associated likes for the post
-	if err := storage.DeleteLikesByPostID(uuid); err != nil {
+	if err := storage.DeleteLikesByPostID(postUUID); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to delete post likes",
 		})
 	}
 
 	// Delete all associated comments for the post
-	if err := storage.DeleteCommentsByPostID(uuid); err != nil {
+	if err := storage.DeleteCommentsByPostID(postUUID); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to delete post comments",
 		})
 	}
 
 	// Delete the post itself
-	if err := storage.DeletePost(uuid); err != nil {
+	if err := storage.DeletePost(postUUID); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to delete post",
 		})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"message": fmt.Sprintf("Post deleted successfully by user %s", id),
+		"message": fmt.Sprintf("Post deleted successfully by user %s", userID),
 	})
 }
 

@@ -9,6 +9,42 @@ import (
 	"github.com/google/uuid"
 )
 
+// DeleteComment handles the deletion of a comment
+func DeleteComment(c *fiber.Ctx) error {
+	// Ensure the user is authenticated
+	userID, err := ValidateRequest(c) // Assuming you have a method to validate the user
+	if err != nil {
+		log.Println("Error: Unauthorized user -", err)
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized user",
+		})
+	}
+
+	// Get the comment ID from the request parameters
+	commentID := c.Params("commentId")
+	uuidCommentID, err := uuid.Parse(commentID)
+	if err != nil {
+		log.Println("Error: Invalid comment ID -", err)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid comment ID",
+		})
+	}
+
+	// Call the service to delete the comment
+	err = services.DeleteCommentService(uuidCommentID, userID)
+	if err != nil {
+		log.Println("Error: Failed to delete comment -", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	// Return success response
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "Comment deleted successfully",
+	})
+}
+
 // CreateComment handles creating a new comment for a post
 func CreateComment(c *fiber.Ctx) error {
 	// Ensure the user is authenticated

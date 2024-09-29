@@ -10,6 +10,50 @@ import (
 	"github.com/google/uuid"
 )
 
+// DeleteCommentService handles the logic of deleting a comment
+func DeleteCommentService(commentID uuid.UUID, userID string) error {
+	// Fetch the comment by its ID
+	comment, err := storage.FindCommentByID(commentID)
+	if err != nil {
+		return fmt.Errorf("failed to find comment: %w", err)
+	}
+
+	// Ensure the user is the author of the comment or has admin privileges
+	if comment.UserID != userID {
+		return fmt.Errorf("unauthorized action: user is not the author of the comment")
+	}
+
+	// Call the storage function to delete the comment
+	if err := storage.DeleteComment(commentID); err != nil {
+		return fmt.Errorf("failed to delete comment: %w", err)
+	}
+
+	// Update the comments counter on the post
+	if err := updateCommentsCounterOnDelete(comment.PostID); err != nil {
+		return fmt.Errorf("failed to update comments counter: %w", err)
+	}
+
+	return nil
+}
+
+// updateCommentsCounterOnDelete decrements the comments count for a given post ID
+func updateCommentsCounterOnDelete(postID uuid.UUID) error {
+	post, err := storage.GetPostByID(postID)
+	if err != nil {
+		return fmt.Errorf("failed to get post: %w", err)
+	}
+
+	// Decrement the comments count
+	post.CommentsCount--
+
+	// Save the updated post
+	if err := database.DB.Save(&post).Error; err != nil {
+		return fmt.Errorf("failed to save updated post: %w", err)
+	}
+
+	return nil
+}
+
 // CreateCommentService handles the logic of creating a new comment
 func CreateCommentService(postID uuid.UUID, userID string, content string) (*models.Comment, error) {
 	// Validate content is not empty

@@ -22,3 +22,20 @@ func DeleteCommentsByPostID(postID uuid.UUID) error {
 	}
 	return nil
 }
+
+// FindCommentByID retrieves a comment by its ID
+func FindCommentByID(commentID uuid.UUID) (*models.Comment, error) {
+	var comment models.Comment
+	if err := database.DB.Where("id = ?", commentID).First(&comment).Error; err != nil {
+		return nil, err
+	}
+	return &comment, nil
+}
+
+// DeleteComment removes a comment from the database by its ID
+func DeleteComment(commentID uuid.UUID) error {
+	if err := database.DB.Where("id = ?", commentID).Delete(&models.Comment{}).Error; err != nil {
+		return err
+	}
+	return nil
+}
