@@ -1,47 +1,45 @@
 package handlers
 
 import (
+	"fmt"
 	"log"
 	"strconv"
 
+	"github.com/Sajjad-iq/google_plus_react_native_go/internal/models/requestModels"
 	"github.com/Sajjad-iq/google_plus_react_native_go/internal/services"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
 
-// DeleteComment handles the deletion of a comment
+// DeleteComment deletes a comment from a post
 func DeleteComment(c *fiber.Ctx) error {
 	// Ensure the user is authenticated
-	userID, err := ValidateRequest(c) // Assuming you have a method to validate the user
+	userID, err := ValidateRequest(c)
 	if err != nil {
-		log.Println("Error: Unauthorized user -", err)
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Unauthorized user",
 		})
 	}
 
-	// Get the comment ID from the request parameters
-	commentID := c.Params("commentId")
-	uuidCommentID, err := uuid.Parse(commentID)
+	// Get the comment ID from the URL
+	commentID := c.Params("id")
+	commentUUID, err := uuid.Parse(commentID)
 	if err != nil {
-		log.Println("Error: Invalid comment ID -", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid comment ID",
 		})
 	}
 
-	// Call the service to delete the comment
-	err = services.DeleteCommentService(uuidCommentID, userID)
+	// Delete the comment
+	err = services.DeleteCommentService(commentUUID, userID)
 	if err != nil {
-		log.Println("Error: Failed to delete comment -", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": err.Error(),
+			"error": "Failed to delete comment",
 		})
 	}
 
-	// Return success response
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"message": "Comment deleted successfully",
+		"message": fmt.Sprintf("Comment deleted successfully by user %s", userID),
 	})
 }
 
@@ -67,9 +65,8 @@ func CreateComment(c *fiber.Ctx) error {
 	}
 
 	// Parse the request body to get the comment content
-	var requestBody struct {
-		Content string `json:"content"`
-	}
+	var requestBody requestModels.CreateCommentRequestBody
+
 	if err := c.BodyParser(&requestBody); err != nil {
 		log.Println("Error: Invalid request body -", err) // Log the error
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -78,7 +75,7 @@ func CreateComment(c *fiber.Ctx) error {
 	}
 
 	// Call the service to handle the comment creation
-	comment, err := services.CreateCommentService(uuidPostID, userID, requestBody.Content)
+	comment, err := services.CreateCommentService(uuidPostID, userID, requestBody)
 	if err != nil {
 		log.Println("Error: Failed to create comment -", err) // Log the error
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

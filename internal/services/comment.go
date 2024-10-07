@@ -6,6 +6,7 @@ import (
 
 	"github.com/Sajjad-iq/google_plus_react_native_go/internal/database"
 	"github.com/Sajjad-iq/google_plus_react_native_go/internal/models"
+	"github.com/Sajjad-iq/google_plus_react_native_go/internal/models/requestModels"
 	"github.com/Sajjad-iq/google_plus_react_native_go/internal/storage"
 	"github.com/google/uuid"
 )
@@ -29,7 +30,7 @@ func DeleteCommentService(commentID uuid.UUID, userID string) error {
 	}
 
 	// Update the comments counter on the post
-	if err := updateCommentsCounterOnDelete(comment.PostID); err != nil {
+	if err := DecrementPostCommentsCounter(comment.PostID); err != nil {
 		return fmt.Errorf("failed to update comments counter: %w", err)
 	}
 
@@ -37,14 +38,16 @@ func DeleteCommentService(commentID uuid.UUID, userID string) error {
 }
 
 // updateCommentsCounterOnDelete decrements the comments count for a given post ID
-func updateCommentsCounterOnDelete(postID uuid.UUID) error {
+func DecrementPostCommentsCounter(postID uuid.UUID) error {
 	post, err := storage.GetPostByID(postID)
 	if err != nil {
 		return fmt.Errorf("failed to get post: %w", err)
 	}
 
-	// Decrement the comments count
-	post.CommentsCount--
+	if post.CommentsCount > 0 {
+		// Decrement the comments count
+		post.CommentsCount--
+	}
 
 	// Save the updated post
 	if err := database.DB.Save(&post).Error; err != nil {
@@ -54,10 +57,9 @@ func updateCommentsCounterOnDelete(postID uuid.UUID) error {
 	return nil
 }
 
-// CreateCommentService handles the logic of creating a new comment
-func CreateCommentService(postID uuid.UUID, userID string, content string) (*models.Comment, error) {
+func CreateCommentService(postID uuid.UUID, userID string, commentRequestBody requestModels.CreateCommentRequestBody) (*models.Comment, error) {
 	// Validate content is not empty
-	if content == "" {
+	if commentRequestBody.Content == "" {
 		return nil, fmt.Errorf("comment content cannot be empty")
 	}
 
@@ -66,16 +68,25 @@ func CreateCommentService(postID uuid.UUID, userID string, content string) (*mod
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
 
+	// Extract mentioned user names from MentionedUsers
+	mentionedUserNames := []string{}
+	for _, mentionedUser := range commentRequestBody.MentionedUsers {
+		if mentionedUser.Name != "" && mentionedUser.Id != "" {
+			mentionedUserNames = append(mentionedUserNames, mentionedUser.Name)
+		}
+	}
+
 	// Create the new comment
 	newComment := models.Comment{
-		ID:           uuid.New(),
-		PostID:       postID,
-		UserID:       userID,
-		Content:      content,
-		AuthorName:   user.Username,
-		AuthorAvatar: user.ProfileAvatar,
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
+		ID:             uuid.New(),
+		PostID:         postID,
+		UserID:         userID,
+		Content:        commentRequestBody.Content,
+		MentionedUsers: mentionedUserNames,
+		AuthorName:     user.Username,
+		AuthorAvatar:   user.ProfileAvatar,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
 	}
 
 	// Call the storage function to save the comment
@@ -84,7 +95,7 @@ func CreateCommentService(postID uuid.UUID, userID string, content string) (*mod
 	}
 
 	// Update the comments counter on the post
-	if err := updateCommentsCounter(postID); err != nil {
+	if err := IncrementPostCommentsCounter(postID); err != nil {
 		return nil, fmt.Errorf("failed to update comments counter: %w", err)
 	}
 
@@ -92,7 +103,7 @@ func CreateCommentService(postID uuid.UUID, userID string, content string) (*mod
 }
 
 // updateCommentsCounter increments the comments count for a given post ID
-func updateCommentsCounter(postID uuid.UUID) error {
+func IncrementPostCommentsCounter(postID uuid.UUID) error {
 
 	post, err := storage.GetPostByID(postID)
 	if err != nil {
@@ -121,7 +132,6 @@ func FetchCommentsService(postID uuid.UUID, limit int) ([]models.Comment, error)
 
 	// Fetch comments from the database using the postID, ordered by latest first, with a limit
 	if err := database.DB.Where("post_id = ?", postID).
-		Order("created_at DESC"). // Order by created_at in descending order
 		Limit(limit).
 		Find(&comments).Error; err != nil {
 		return nil, err

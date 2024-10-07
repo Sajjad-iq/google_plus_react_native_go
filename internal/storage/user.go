@@ -7,11 +7,14 @@ import (
 
 // CreateUser inserts a new user record into the database.
 // It returns an error if the operation fails.
-func CreateUser(user models.User) error {
+func CreateUser(user models.User) (*models.User, error) {
+	// Attempt to create the user in the database
 	if err := database.DB.Create(&user).Error; err != nil {
-		return err
+		return nil, err // Return error if the creation fails
 	}
-	return nil
+
+	// Return the created user and nil error if successful
+	return &user, nil
 }
 
 // FindUserByID retrieves a user by their ID from the database.

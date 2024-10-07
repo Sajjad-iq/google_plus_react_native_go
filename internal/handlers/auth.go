@@ -28,7 +28,7 @@ func OAuthUserLogin(c *fiber.Ctx) error {
 	}
 
 	// Validate the Google OAuth token
-	googleUser, err := services.VerifyGoogleOAuthToken(request.Token)
+	_, err := services.VerifyGoogleOAuthToken(request.Token)
 	if err != nil {
 		log.Println("Invalid Google OAuth token:", err)
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
@@ -64,14 +64,15 @@ func OAuthUserLogin(c *fiber.Ctx) error {
 	}
 
 	// Create a new user if it doesn't exist
-	if err := storage.CreateUser(request.User); err != nil {
+	createdUser, err := storage.CreateUser(request.User)
+	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to create user",
 		})
 	}
 
 	// Generate JWT for the new user
-	token, err := services.GenerateJWTForUser(request.User, jwt_secret)
+	token, err := services.GenerateJWTForUser(*createdUser, jwt_secret)
 	if err != nil {
 		log.Println("Failed to generate token:", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -80,7 +81,7 @@ func OAuthUserLogin(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
-		"user":  googleUser,
+		"user":  createdUser,
 		"token": token,
 	})
 }
