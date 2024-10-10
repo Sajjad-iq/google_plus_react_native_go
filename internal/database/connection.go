@@ -36,6 +36,8 @@ func Connect() {
 	AutoMigrate(&models.Post{})
 	AutoMigrate(&models.Like{})
 	AutoMigrate(&models.Comment{})
+	AutoMigrate(&models.Notification{})
+	AutoMigrate(&models.Actor{})
 
 	err = DB.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"").Error
 	if err != nil {

@@ -8,50 +8,33 @@ import (
 	"github.com/google/uuid"
 )
 
-// CreatePost creates a new post in the database
-
-func ToggleLike(post *models.Post, userID string) (bool, error) {
+// FindLikeByUserAndPost fetches a like by user and post from the database
+func FindLikeByUserAndPost(postID uuid.UUID, userID string) (*models.Like, error) {
 	var existingLike models.Like
-
-	// Check if the user has already liked the post
-	err := database.DB.Where("post_id = ? AND user_id = ?", post.ID, userID).First(&existingLike).Error
-	if err == nil {
-		// User has already liked the post, remove like
-		if err := database.DB.Delete(&existingLike).Error; err != nil {
-			return false, fmt.Errorf("failed to remove like: %w", err)
-		}
-
-		// Decrement the like count
-		post.LikesCount--
-
-		// Update the post in the database
-		if err := UpdatePost(post); err != nil {
-			return false, fmt.Errorf("failed to update post after removing like: %w", err)
-		}
-
-		return false, nil // Returning false to indicate the post is now unliked
+	err := database.DB.Where("post_id = ? AND user_id = ?", postID, userID).First(&existingLike).Error
+	if err != nil {
+		return nil, err
 	}
-
-	// If the user hasn't liked the post yet, add a new like
-	newLike := models.Like{
-		UserID: userID,
-		PostID: post.ID,
-	}
-	if err := database.DB.Create(&newLike).Error; err != nil {
-		return false, fmt.Errorf("failed to add like: %w", err)
-	}
-
-	// Increment the like count
-	post.LikesCount++
-
-	// Update the post in the database
-	if err := UpdatePost(post); err != nil {
-		return false, fmt.Errorf("failed to update post after adding like: %w", err)
-	}
-
-	return true, nil // Returning true to indicate the post is now liked
+	return &existingLike, nil
 }
 
+// CreateLike creates a new like in the database
+func CreateLike(like *models.Like) error {
+	if err := database.DB.Create(like).Error; err != nil {
+		return fmt.Errorf("failed to add like: %w", err)
+	}
+	return nil
+}
+
+// DeleteLike removes an existing like from the database
+func DeleteLike(like *models.Like) error {
+	if err := database.DB.Delete(like).Error; err != nil {
+		return fmt.Errorf("failed to remove like: %w", err)
+	}
+	return nil
+}
+
+// DeleteLikesByPostID deletes all likes associated with a specific post
 func DeleteLikesByPostID(postID uuid.UUID) error {
 	if err := database.DB.Where("post_id = ?", postID).Delete(&models.Like{}).Error; err != nil {
 		return fmt.Errorf("could not delete likes for post %v: %w", postID, err)
