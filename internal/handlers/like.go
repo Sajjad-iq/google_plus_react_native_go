@@ -20,6 +20,7 @@ func LikePost(c *fiber.Ctx) error {
 
 	// Get the post ID from the URL parameters
 	postID := c.Params("id")
+	lang := c.Get("Accept-Language", "en") // Default to "en" if not set
 	uuid, err := uuid.Parse(postID)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -36,7 +37,7 @@ func LikePost(c *fiber.Ctx) error {
 	}
 
 	// Toggle the like state based on the user
-	liked, err := services.ToggleLike(post, userID) // Modify to return like status
+	liked, err := services.ToggleLike(post, userID, lang) // Modify to return like status
 	if err != nil {
 		fmt.Println(err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

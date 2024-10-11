@@ -56,6 +56,7 @@ func CreateComment(c *fiber.Ctx) error {
 
 	// Get the post ID from the request parameters
 	postID := c.Params("id")
+	lang := c.Get("Accept-Language", "en") // Default to "en" if not set
 	uuidPostID, err := uuid.Parse(postID)
 	if err != nil {
 		log.Println("Error: Invalid post ID -", err) // Log the error
@@ -75,7 +76,7 @@ func CreateComment(c *fiber.Ctx) error {
 	}
 
 	// Call the service to handle the comment creation
-	comment, err := services.CreateCommentService(uuidPostID, userID, requestBody)
+	comment, err := services.CreateCommentService(uuidPostID, userID, requestBody, lang)
 	if err != nil {
 		log.Println("Error: Failed to create comment -", err) // Log the error
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

@@ -8,7 +8,7 @@ import (
 )
 
 // ToggleLike handles the logic for liking or unliking a post and manages notifications
-func ToggleLike(post *models.Post, userID string) (bool, error) {
+func ToggleLike(post *models.Post, userID string, lang string) (bool, error) {
 	// Check if the user has already liked the post
 	existingLike, err := storage.FindLikeByUserAndPost(post.ID, userID)
 	if err == nil && existingLike != nil {
@@ -48,7 +48,7 @@ func ToggleLike(post *models.Post, userID string) (bool, error) {
 	// Create or update a notification for the post like
 	actionTypes := []string{"like"} // Define the action type as an array of strings
 
-	_, err = CreateOrUpdateNotification(post.AuthorID, userID, actionTypes, post.ID, post.Body)
+	_, err = CreateOrUpdateNotification(post.AuthorID, userID, actionTypes, post.ID, post.Body, lang)
 	if err != nil {
 		return false, fmt.Errorf("failed to create or update notification: %w", err)
 	}

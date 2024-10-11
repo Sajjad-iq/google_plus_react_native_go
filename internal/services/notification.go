@@ -12,7 +12,7 @@ import (
 )
 
 // CreateOrUpdateNotification handles updating or creating a notification
-func CreateOrUpdateNotification(userID, actorID string, actionTypes []string, referenceID uuid.UUID, ReferenceContent string) (*models.Notification, error) {
+func CreateOrUpdateNotification(userID, actorID string, actionTypes []string, referenceID uuid.UUID, referenceContent string, lang string) (*models.Notification, error) {
 	// Check for an existing notification
 	existingNotification, err := storage.FindNotificationByUserActionAndReference(userID, referenceID)
 	if err != nil {
@@ -27,17 +27,32 @@ func CreateOrUpdateNotification(userID, actorID string, actionTypes []string, re
 		return nil, err
 	}
 
+	var notification *models.Notification
+
 	if existingNotification != nil {
 		// Update the existing notification
-		if err := UpdateExistingNotification(existingNotification, actor, actionTypes, ReferenceContent); err != nil {
+		if err := UpdateExistingNotification(existingNotification, actor, actionTypes, referenceContent); err != nil {
 			log.Println("Error updating existing notification:", err)
 			return nil, err
 		}
-		return existingNotification, nil
+		notification = existingNotification
+	} else {
+		// Create a new notification
+		var err error
+		notification, err = CreateNewNotification(userID, actor, actionTypes, referenceID, referenceContent)
+		if err != nil {
+			log.Println("Error creating new notification:", err)
+			return nil, err
+		}
 	}
 
-	// Create a new notification
-	return CreateNewNotification(userID, actor, actionTypes, referenceID, ReferenceContent)
+	// Send notification using Expo Push Notification API
+	if err := utils.SendPushNotification(userID, notification, lang); err != nil {
+		log.Println("Error sending push notification:", err)
+		return nil, err
+	}
+
+	return notification, nil
 }
 
 // FindActor retrieves actor information and creates an Actor model
@@ -140,60 +155,8 @@ func FetchUserNotificationsService(userID string, limit int, lang string) ([]mod
 
 	// Process notifications to create message content
 	for i := range notifications {
-		notifications[i].NotificationContent = createNotificationMessage(notifications[i], lang)
+		notifications[i].NotificationContent = utils.CreateNotificationMessage(notifications[i], lang)
 	}
 
 	return notifications, nil
-}
-
-// createNotificationMessage generates the notification message based on actions
-func createNotificationMessage(notification models.Notification, lang string) string {
-	if len(notification.Actors) == 0 {
-		return ""
-	}
-
-	lastActionType, lastActor := CollectLastActionType(notification)
-
-	return buildMessage(lastActionType, lastActor, notification, lang)
-}
-
-// CollectLastActionType collects the last action type and the last actor separately
-func CollectLastActionType(notification models.Notification) (string, string) {
-	var lastActionType, lastActor string
-
-	// Collect the last action type
-	if len(notification.ActionType) > 0 {
-		lastActionType = notification.ActionType[len(notification.ActionType)-1]
-	}
-
-	// Collect the last actor
-	if len(notification.Actors) > 0 {
-		lastActor = notification.Actors[len(notification.Actors)-1].Name
-	}
-
-	return lastActionType, lastActor
-}
-
-// buildMessage constructs the final message based on the action type, actor, and language
-func buildMessage(lastActionType, lastActor string, notification models.Notification, lang string) string {
-	message := ""
-
-	// Choose the correct message template based on the action type and language
-	if template, ok := utils.MessageTemplates[lastActionType]; ok {
-		// Add "و آخرون" or "and others" if there are multiple actors
-		if len(notification.Actors) > 1 {
-			if lang == "ar" {
-				message += fmt.Sprintf("\u200F%s و آخرون", lastActor)
-			} else {
-				message += fmt.Sprintf("%s and others", lastActor)
-			}
-		} else {
-			message += fmt.Sprintf("\u200F%s", lastActor)
-		}
-
-		// Append the main message
-		message = fmt.Sprintf(template[lang], message, notification.ReferenceContent)
-	}
-
-	return message
 }

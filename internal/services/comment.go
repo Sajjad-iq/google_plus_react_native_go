@@ -57,7 +57,7 @@ func DecrementPostCommentsCounter(postID uuid.UUID) error {
 	return nil
 }
 
-func CreateCommentService(postID uuid.UUID, userID string, commentRequestBody requestModels.CreateCommentRequestBody) (*models.Comment, error) {
+func CreateCommentService(postID uuid.UUID, userID string, commentRequestBody requestModels.CreateCommentRequestBody, lang string) (*models.Comment, error) {
 	// Validate content is not empty
 	if commentRequestBody.Content == "" {
 		return nil, fmt.Errorf("comment content cannot be empty")
@@ -95,19 +95,34 @@ func CreateCommentService(postID uuid.UUID, userID string, commentRequestBody re
 	}
 
 	// Update the comments counter on the post
-	if err := IncrementPostCommentsCounter(postID); err != nil {
+	updatedPost, err := IncrementPostCommentsCounter(postID)
+
+	if err != nil {
 		return nil, fmt.Errorf("failed to update comments counter: %w", err)
+	}
+
+	var actionTypes []string
+
+	if len(mentionedUserNames) > 0 {
+		actionTypes = append(actionTypes, "mention")
+	} else {
+		actionTypes = append(actionTypes, "comment")
+	}
+
+	_, err = CreateOrUpdateNotification(updatedPost.AuthorID, userID, actionTypes, postID, commentRequestBody.Content, lang)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create or update notification: %w", err)
 	}
 
 	return &newComment, nil
 }
 
 // updateCommentsCounter increments the comments count for a given post ID
-func IncrementPostCommentsCounter(postID uuid.UUID) error {
+func IncrementPostCommentsCounter(postID uuid.UUID) (*models.Post, error) {
 
 	post, err := storage.GetPostByID(postID)
 	if err != nil {
-		return fmt.Errorf("failed to get post: %w", err)
+		return nil, fmt.Errorf("failed to get post: %w", err)
 	}
 
 	// Increment the comments count
@@ -115,10 +130,10 @@ func IncrementPostCommentsCounter(postID uuid.UUID) error {
 
 	// Save the updated post
 	if err := database.DB.Save(&post).Error; err != nil {
-		return fmt.Errorf("failed to save updated post: %w", err)
+		return nil, fmt.Errorf("failed to save updated post: %w", err)
 	}
 
-	return nil
+	return post, nil
 }
 
 // FetchCommentsService retrieves comments for a given post ID with a limit
