@@ -24,6 +24,7 @@ type Notification struct {
 	UserID              string          `gorm:"not null" json:"user_id"`                        // User receiving the notification
 	Actors              ActorArray      `gorm:"type:jsonb" json:"actors"`
 	NotificationContent string          `json:"notification_content"`             // Notification content
+	ReferenceContent    string          `json:"reference_content"`                // Notification content
 	ActionType          ActionTypeArray `gorm:"type:jsonb" json:"action_type"`    // Array of action types (e.g., 'like', 'comment', 'follow', 'mention')
 	ReferenceID         uuid.UUID       `gorm:"type:uuid" json:"reference_id"`    // ID referencing the related entity (e.g., post, comment, or user)
 	IsRead              bool            `gorm:"default:false" json:"is_read"`     // Whether the notification has been read

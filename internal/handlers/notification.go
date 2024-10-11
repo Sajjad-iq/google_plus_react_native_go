@@ -17,6 +17,10 @@ func FetchNotificationsHandler(c *fiber.Ctx) error {
 			"error": "Unauthorized user",
 		})
 	}
+
+	// Access the Accept-Language header
+	lang := c.Get("Accept-Language", "en") // Default to "en" if not set
+
 	// Optional: parse the 'limit' query parameter (default to 10 if not provided)
 	limitQuery := c.Query("limit", "10")
 	limit, err := strconv.Atoi(limitQuery)
@@ -27,7 +31,7 @@ func FetchNotificationsHandler(c *fiber.Ctx) error {
 	}
 
 	// Fetch the notifications using the service function
-	notifications, err := services.FetchUserNotificationsService(userID, limit)
+	notifications, err := services.FetchUserNotificationsService(userID, limit, lang) // Pass lang to the service
 	if err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to fetch notifications",
