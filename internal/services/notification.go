@@ -72,7 +72,6 @@ func FindActor(actorID string) (models.Actor, error) {
 }
 
 // UpdateExistingNotification updates an existing notification with the new actor
-// UpdateExistingNotification appends new actor and action types if not already present
 func UpdateExistingNotification(notification *models.Notification, actor models.Actor, newActionTypes []string, ReferenceContent string) error {
 	// Check if the actor is already part of the notification
 	actorExists := false

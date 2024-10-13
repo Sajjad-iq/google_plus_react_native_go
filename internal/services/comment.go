@@ -68,12 +68,10 @@ func CreateCommentService(postID uuid.UUID, userID string, commentRequestBody re
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
 
-	// Extract mentioned user names from MentionedUsers
-	mentionedUserNames := []string{}
-	for _, mentionedUser := range commentRequestBody.MentionedUsers {
-		if mentionedUser.Name != "" && mentionedUser.Id != "" {
-			mentionedUserNames = append(mentionedUserNames, mentionedUser.Name)
-		}
+	var MentionedUser models.MentionedUser
+
+	if commentRequestBody.MentionedUsers[0].UserID != "" {
+		MentionedUser = commentRequestBody.MentionedUsers[0]
 	}
 
 	// Create the new comment
@@ -82,7 +80,7 @@ func CreateCommentService(postID uuid.UUID, userID string, commentRequestBody re
 		PostID:         postID,
 		UserID:         userID,
 		Content:        commentRequestBody.Content,
-		MentionedUsers: mentionedUserNames,
+		MentionedUsers: []models.MentionedUser{MentionedUser},
 		AuthorName:     user.Username,
 		AuthorAvatar:   user.ProfileAvatar,
 		CreatedAt:      time.Now(),
@@ -103,15 +101,20 @@ func CreateCommentService(postID uuid.UUID, userID string, commentRequestBody re
 
 	var actionTypes []string
 
-	if len(mentionedUserNames) > 0 {
+	if commentRequestBody.MentionedUsers[0].UserID != "" {
 		actionTypes = append(actionTypes, "mention")
+		_, err = CreateOrUpdateNotification(commentRequestBody.MentionedUsers[0].UserID, userID, actionTypes, postID, commentRequestBody.Content, lang)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create or update notification: %w", err)
+		}
 	} else {
-		actionTypes = append(actionTypes, "comment")
-	}
-
-	_, err = CreateOrUpdateNotification(updatedPost.AuthorID, userID, actionTypes, postID, commentRequestBody.Content, lang)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create or update notification: %w", err)
+		if userID != updatedPost.AuthorID {
+			actionTypes = append(actionTypes, "comment")
+			_, err = CreateOrUpdateNotification(updatedPost.AuthorID, userID, actionTypes, postID, commentRequestBody.Content, lang)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create or update notification: %w", err)
+			}
+		}
 	}
 
 	return &newComment, nil

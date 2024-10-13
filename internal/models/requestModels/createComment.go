@@ -1,11 +1,8 @@
 package requestModels
 
-type MentionedUser struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
-}
+import "github.com/Sajjad-iq/google_plus_react_native_go/internal/models"
 
 type CreateCommentRequestBody struct {
-	Content        string          `json:"content"`
-	MentionedUsers []MentionedUser `json:"mentioned_users"`
+	Content        string                 `json:"content"`
+	MentionedUsers []models.MentionedUser `json:"mentioned_users"`
 }

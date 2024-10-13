@@ -45,12 +45,13 @@ func ToggleLike(post *models.Post, userID string, lang string) (bool, error) {
 		return false, fmt.Errorf("failed to update post after adding like: %w", err)
 	}
 
-	// Create or update a notification for the post like
-	actionTypes := []string{"like"} // Define the action type as an array of strings
-
-	_, err = CreateOrUpdateNotification(post.AuthorID, userID, actionTypes, post.ID, post.Body, lang)
-	if err != nil {
-		return false, fmt.Errorf("failed to create or update notification: %w", err)
+	if post.AuthorID != userID {
+		// Create or update a notification for the post like
+		actionTypes := []string{"like"} // Define the action type as an array of strings
+		_, err = CreateOrUpdateNotification(post.AuthorID, userID, actionTypes, post.ID, post.Body, lang)
+		if err != nil {
+			return false, fmt.Errorf("failed to create or update notification: %w", err)
+		}
 	}
 
 	return true, nil // Returning true to indicate the post is now liked
