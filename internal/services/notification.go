@@ -12,16 +12,16 @@ import (
 )
 
 // CreateOrUpdateNotification handles updating or creating a notification
-func CreateOrUpdateNotification(userID, actorID string, actionTypes []string, referenceID uuid.UUID, referenceContent string, lang string) (*models.Notification, error) {
+func CreateOrUpdateNotification(notifyUser *models.User, actorID string, actionTypes []string, referenceID uuid.UUID, referenceContent string) (*models.Notification, error) {
 	// Check for an existing notification
-	existingNotification, err := storage.FindNotificationByUserActionAndReference(userID, referenceID)
+	existingNotification, err := storage.FindNotificationByUserActionAndReference(notifyUser.ID, referenceID)
 	if err != nil {
 		log.Println("Error checking for existing notification:", err)
 		return nil, fmt.Errorf("failed to check for existing notification: %w", err)
 	}
 
 	// Fetch or create the actor
-	actor, err := FindActor(actorID)
+	actor, err := CreateActor(actorID)
 	if err != nil {
 		log.Println("Error finding actor:", err)
 		return nil, err
@@ -31,7 +31,7 @@ func CreateOrUpdateNotification(userID, actorID string, actionTypes []string, re
 
 	if existingNotification != nil {
 		// Update the existing notification
-		if err := UpdateExistingNotification(existingNotification, actor, actionTypes, referenceContent); err != nil {
+		if err := updateExistingNotification(existingNotification, actor, actionTypes, referenceContent); err != nil {
 			log.Println("Error updating existing notification:", err)
 			return nil, err
 		}
@@ -39,7 +39,7 @@ func CreateOrUpdateNotification(userID, actorID string, actionTypes []string, re
 	} else {
 		// Create a new notification
 		var err error
-		notification, err = CreateNewNotification(userID, actor, actionTypes, referenceID, referenceContent)
+		notification, err = createNewNotification(notifyUser.ID, actor, actionTypes, referenceID, referenceContent)
 		if err != nil {
 			log.Println("Error creating new notification:", err)
 			return nil, err
@@ -47,7 +47,7 @@ func CreateOrUpdateNotification(userID, actorID string, actionTypes []string, re
 	}
 
 	// Send notification using Expo Push Notification API
-	if err := utils.SendPushNotification(userID, notification, lang); err != nil {
+	if err := utils.SendPushNotification(notifyUser, notification); err != nil {
 		log.Println("Error sending push notification:", err)
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func CreateOrUpdateNotification(userID, actorID string, actionTypes []string, re
 }
 
 // FindActor retrieves actor information and creates an Actor model
-func FindActor(actorID string) (models.Actor, error) {
+func CreateActor(actorID string) (models.Actor, error) {
 	actorUser, err := storage.FindUserByID(actorID) // Assuming FindUserByID takes a string
 	if err != nil {
 		log.Println("Error finding actor user:", err)
@@ -72,11 +72,14 @@ func FindActor(actorID string) (models.Actor, error) {
 }
 
 // UpdateExistingNotification updates an existing notification with the new actor
-func UpdateExistingNotification(notification *models.Notification, actor models.Actor, newActionTypes []string, ReferenceContent string) error {
+func updateExistingNotification(notification *models.Notification, actor models.Actor, newActionTypes []string, ReferenceContent string) error {
 	// Check if the actor is already part of the notification
 	actorExists := false
-	for _, existingActor := range notification.Actors {
+	for i, existingActor := range notification.Actors {
 		if existingActor.ID == actor.ID {
+			// Move the existing actor to the end of the list
+			notification.Actors = append(notification.Actors[:i], notification.Actors[i+1:]...) // Remove the actor
+			notification.Actors = append(notification.Actors, existingActor)                    // Append the actor to the end
 			actorExists = true
 			break
 		}
@@ -85,11 +88,14 @@ func UpdateExistingNotification(notification *models.Notification, actor models.
 		notification.Actors = append(notification.Actors, actor)
 	}
 
-	// Add any new action types that are not already present
+	// Add any new action types that are not already present or move existing to the end
 	for _, newActionType := range newActionTypes {
 		actionExists := false
-		for _, existingActionType := range notification.ActionType {
+		for i, existingActionType := range notification.ActionType {
 			if existingActionType == newActionType {
+				// Move the existing action type to the end of the list
+				notification.ActionType = append(notification.ActionType[:i], notification.ActionType[i+1:]...) // Remove the action type
+				notification.ActionType = append(notification.ActionType, existingActionType)                   // Append the action type to the end
 				actionExists = true
 				break
 			}
@@ -112,7 +118,7 @@ func UpdateExistingNotification(notification *models.Notification, actor models.
 }
 
 // CreateNewNotification creates a new notification entry
-func CreateNewNotification(userID string, actor models.Actor, actionTypes []string, referenceID uuid.UUID, ReferenceContent string) (*models.Notification, error) {
+func createNewNotification(userID string, actor models.Actor, actionTypes []string, referenceID uuid.UUID, ReferenceContent string) (*models.Notification, error) {
 	newNotification := models.Notification{
 		ID:                  uuid.New(),
 		UserID:              userID,

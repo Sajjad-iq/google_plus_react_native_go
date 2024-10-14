@@ -45,10 +45,16 @@ func ToggleLike(post *models.Post, userID string, lang string) (bool, error) {
 		return false, fmt.Errorf("failed to update post after adding like: %w", err)
 	}
 
-	if post.AuthorID != userID {
+	notifyUser, err := storage.FindUserByID(post.AuthorID)
+	if err != nil {
+		// If an error occurs (e.g., user not found), return nil and false
+		return false, nil
+	}
+
+	if notifyUser.ID != userID {
 		// Create or update a notification for the post like
 		actionTypes := []string{"like"} // Define the action type as an array of strings
-		_, err = CreateOrUpdateNotification(post.AuthorID, userID, actionTypes, post.ID, post.Body, lang)
+		_, err = CreateOrUpdateNotification(notifyUser, userID, actionTypes, post.ID, post.Body)
 		if err != nil {
 			return false, fmt.Errorf("failed to create or update notification: %w", err)
 		}

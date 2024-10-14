@@ -2,12 +2,12 @@ package services
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/Sajjad-iq/google_plus_react_native_go/internal/database"
 	"github.com/Sajjad-iq/google_plus_react_native_go/internal/models"
 	"github.com/Sajjad-iq/google_plus_react_native_go/internal/models/requestModels"
 	"github.com/Sajjad-iq/google_plus_react_native_go/internal/storage"
+	"github.com/Sajjad-iq/google_plus_react_native_go/internal/utils"
 	"github.com/google/uuid"
 )
 
@@ -57,67 +57,47 @@ func DecrementPostCommentsCounter(postID uuid.UUID) error {
 	return nil
 }
 
+// CreateCommentService creates a new comment on a post
 func CreateCommentService(postID uuid.UUID, userID string, commentRequestBody requestModels.CreateCommentRequestBody, lang string) (*models.Comment, error) {
-	// Validate content is not empty
-	if commentRequestBody.Content == "" {
-		return nil, fmt.Errorf("comment content cannot be empty")
+	// Validate comment content
+	if err := utils.ValidateCommentContent(commentRequestBody.Content); err != nil {
+		return nil, err
 	}
 
-	user, err := storage.FindUserByID(userID)
+	// Fetch user by ID
+	commentedUser, err := storage.FindUserByID(userID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find user: %w", err)
+		return nil, err
 	}
 
-	var MentionedUser models.MentionedUser
-
-	if commentRequestBody.MentionedUsers[0].UserID != "" {
-		MentionedUser = commentRequestBody.MentionedUsers[0]
-	}
-
-	// Create the new comment
-	newComment := models.Comment{
-		ID:             uuid.New(),
-		PostID:         postID,
-		UserID:         userID,
-		Content:        commentRequestBody.Content,
-		MentionedUsers: []models.MentionedUser{MentionedUser},
-		AuthorName:     user.Username,
-		AuthorAvatar:   user.ProfileAvatar,
-		CreatedAt:      time.Now(),
-		UpdatedAt:      time.Now(),
-	}
-
-	// Call the storage function to save the comment
-	if err := storage.SaveComment(&newComment); err != nil {
-		return nil, fmt.Errorf("failed to create comment: %w", err)
-	}
-
-	// Update the comments counter on the post
-	updatedPost, err := IncrementPostCommentsCounter(postID)
-
+	// Fetch user by ID
+	post, err := storage.GetPostByID(postID)
 	if err != nil {
+		return nil, err
+	}
+
+	// Create a new comment
+	newComment, err := utils.CreateNewComment(post.ID, commentRequestBody, commentedUser)
+	if err != nil {
+		return nil, err
+	}
+
+	// Save the comment
+	if err := storage.SaveComment(newComment); err != nil {
+		return nil, fmt.Errorf("failed to save comment: %w", err)
+	}
+
+	// Increment post comments counter
+	if _, err := IncrementPostCommentsCounter(post.ID); err != nil {
 		return nil, fmt.Errorf("failed to update comments counter: %w", err)
 	}
 
-	var actionTypes []string
-
-	if commentRequestBody.MentionedUsers[0].UserID != "" {
-		actionTypes = append(actionTypes, "mention")
-		_, err = CreateOrUpdateNotification(commentRequestBody.MentionedUsers[0].UserID, userID, actionTypes, postID, commentRequestBody.Content, lang)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create or update notification: %w", err)
-		}
-	} else {
-		if userID != updatedPost.AuthorID {
-			actionTypes = append(actionTypes, "comment")
-			_, err = CreateOrUpdateNotification(updatedPost.AuthorID, userID, actionTypes, postID, commentRequestBody.Content, lang)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create or update notification: %w", err)
-			}
-		}
+	// Handle notifications
+	if err := handleCommentNotifications(commentRequestBody, commentedUser, *post); err != nil {
+		return nil, err
 	}
 
-	return &newComment, nil
+	return newComment, nil
 }
 
 // updateCommentsCounter increments the comments count for a given post ID
@@ -156,4 +136,36 @@ func FetchCommentsService(postID uuid.UUID, limit int) ([]models.Comment, error)
 	}
 
 	return comments, nil
+}
+
+func handleCommentNotifications(commentRequestBody requestModels.CreateCommentRequestBody, commentedUser *models.User, post models.Post) error {
+	var actionTypes []string
+
+	// Handle mention notifications
+	if len(commentRequestBody.MentionedUsers) > 0 && commentRequestBody.MentionedUsers[0].UserID != "" {
+		actionTypes = append(actionTypes, "mention")
+		notifyUser, err := storage.FindUserByID(commentRequestBody.MentionedUsers[0].UserID)
+		if err != nil {
+			return fmt.Errorf("failed to create or update notification: %w", err)
+		}
+
+		_, err = CreateOrUpdateNotification(notifyUser, commentedUser.ID, actionTypes, post.ID, commentRequestBody.Content)
+		if err != nil {
+			return fmt.Errorf("failed to create or update notification: %w", err)
+		}
+	} else if post.AuthorID != commentedUser.ID {
+		// Handle comment notifications to post author
+		notifyUser, err := storage.FindUserByID(post.AuthorID)
+		if err != nil {
+			return fmt.Errorf("failed to create or update notification: %w", err)
+		}
+
+		actionTypes = append(actionTypes, "comment")
+		_, err = CreateOrUpdateNotification(notifyUser, commentedUser.ID, actionTypes, post.ID, commentRequestBody.Content)
+		if err != nil {
+			return fmt.Errorf("failed to create or update notification: %w", err)
+		}
+	}
+
+	return nil
 }

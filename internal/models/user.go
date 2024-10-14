@@ -12,6 +12,7 @@ type User struct {
 	ProfileCover  string    `json:"profile_cover"`
 	Bio           string    `json:"bio"`
 	PushToken     string    `json:"push_token"`
+	UserLang      string    `json:"user_lang" gorm:"default:'en'"`
 	Status        string    `json:"status" gorm:"default:'active'"`
 	Role          string    `json:"role" gorm:"default:'user'"`
 	CreatedAt     time.Time `json:"created_at" gorm:"autoCreateTime"`

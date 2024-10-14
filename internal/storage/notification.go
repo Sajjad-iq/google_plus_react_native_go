@@ -48,7 +48,7 @@ func FetchNotificationsByUserID(userID string, limit int) ([]models.Notification
 	var notifications []models.Notification
 
 	if err := database.DB.Where("user_id = ?", userID).
-		Order("created_at DESC").
+		Order("updated_at DESC").
 		Limit(limit).
 		Find(&notifications).Error; err != nil {
 		log.Println("Error fetching notifications:", err)

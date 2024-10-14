@@ -8,5 +8,6 @@ import (
 func UsersRoutesSetup(app *fiber.App) {
 	app.Post("/test", func(c *fiber.Ctx) error { return handlers.OAuthUserLogin(c) })
 	app.Get("/notifications", handlers.FetchNotificationsHandler)
+	app.Put("/notifications/read/:id", handlers.MarkNotificationsAsReadHandler)
 	app.Put("/push-token", handlers.UpdatePushTokenHandler)
 }

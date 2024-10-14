@@ -18,6 +18,7 @@ func UpdatePushTokenHandler(c *fiber.Ctx) error {
 	// Extract the new push token from the request body
 	var requestBody struct {
 		PushToken string `json:"push_token"`
+		UserLang  string `json:"user_lang"`
 	}
 	if err := c.BodyParser(&requestBody); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -35,6 +36,7 @@ func UpdatePushTokenHandler(c *fiber.Ctx) error {
 
 	// Update the user's push token
 	user.PushToken = requestBody.PushToken
+	user.UserLang = requestBody.UserLang
 
 	// Save the updated user record in the database
 	if err := storage.UpdateUser(*user); err != nil {

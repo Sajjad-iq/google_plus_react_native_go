@@ -5,7 +5,9 @@ import (
 	"strconv"
 
 	"github.com/Sajjad-iq/google_plus_react_native_go/internal/services"
+	"github.com/Sajjad-iq/google_plus_react_native_go/internal/storage"
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 )
 
 // FetchNotificationsHandler handles the request for fetching user notifications
@@ -41,5 +43,36 @@ func FetchNotificationsHandler(c *fiber.Ctx) error {
 	// Respond with the notifications
 	return c.Status(http.StatusOK).JSON(fiber.Map{
 		"notifications": notifications,
+	})
+}
+
+func MarkNotificationsAsReadHandler(c *fiber.Ctx) error {
+	// Extract the userID from the request context (assuming it's set by middleware)
+	_, err := ValidateRequest(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized user",
+		})
+	}
+
+	notificationID := c.Params("id")
+	uuid, err := uuid.Parse(notificationID)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid post ID",
+		})
+	}
+
+	// Fetch the notifications using the service function
+	err = storage.MarkNotificationAsRead(uuid) // Pass lang to the service
+	if err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to fetch notifications",
+		})
+	}
+
+	// Respond with the notifications
+	return c.Status(http.StatusOK).JSON(fiber.Map{
+		"message": "Notification marked as read",
 	})
 }
