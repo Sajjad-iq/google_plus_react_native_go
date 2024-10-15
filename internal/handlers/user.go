@@ -50,3 +50,28 @@ func UpdatePushTokenHandler(c *fiber.Ctx) error {
 		"message": "Push token updated successfully",
 	})
 }
+
+func GetTheUser(c *fiber.Ctx) error {
+	// Ensure the user is authenticated
+	_, err := ValidateRequest(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized user",
+		})
+	}
+
+	// Get the post ID from the URL parameters
+	requestedUserID := c.Params("id")
+
+	// Fetch the post from the database
+	user, err := storage.FindUserByID(requestedUserID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to find user",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"user": user,
+	})
+}

@@ -37,6 +37,20 @@ func GetPostByID(id uuid.UUID) (*models.Post, error) {
 	return &post, nil
 }
 
+// GetPostsByUserID retrieves all posts made by a specific user, ordered by 'created_at'
+func GetPostsByUserID(userID string, limit int) ([]models.Post, error) {
+	var posts []models.Post
+
+	// Fetch posts from the database where 'author_id' matches the userID
+	if err := database.DB.Where("author_id = ?", userID).
+		Order("created_at DESC").
+		Limit(limit).
+		Find(&posts).Error; err != nil {
+		return nil, err
+	}
+
+	return posts, nil
+}
 func UpdatePost(post *models.Post) error {
 	return database.DB.Save(post).Error
 }

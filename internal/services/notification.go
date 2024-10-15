@@ -108,6 +108,7 @@ func updateExistingNotification(notification *models.Notification, actor models.
 	// Update the timestamp
 	notification.UpdatedAt = time.Now()
 	notification.ReferenceContent = ReferenceContent
+	notification.IsRead = false
 
 	// Save the updated notification
 	if err := storage.SaveNotification(notification); err != nil {

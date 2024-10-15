@@ -185,6 +185,65 @@ func GetPosts(c *fiber.Ctx) error {
 	})
 }
 
+func GetPostsByUserIdHandler(c *fiber.Ctx) error {
+	// Ensure the user is authenticated
+	userID, err := ValidateRequest(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized user",
+		})
+	}
+
+	// Get the limit from query parameters, default to 10 if not provided
+	limitParam := c.Query("limit", "10")
+	requestedUserID := c.Params("id")
+	limit, err := strconv.Atoi(limitParam)
+	if err != nil || limit <= 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid limit parameter",
+		})
+	}
+
+	// Fetch posts from the database with the specified limit
+	posts, err := storage.GetPostsByUserID(requestedUserID, limit)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to retrieve posts",
+		})
+	}
+
+	// Fetch the likes for the current user in bulk
+	var likes []models.Like
+	err = database.DB.Where("user_id = ?", userID).Find(&likes).Error
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to retrieve likes",
+		})
+	}
+
+	likedPostIDs := make(map[uuid.UUID]bool)
+	for _, like := range likes {
+		likedPostIDs[like.PostID] = true
+	}
+
+	// Set 'YourLike' for each post
+	for i := range posts {
+		if likedPostIDs[posts[i].ID] {
+			posts[i].YourLike = true
+		} else {
+			posts[i].YourLike = false
+		}
+	}
+
+	stop := len(posts) < limit
+
+	// Return the posts as JSON
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"stop":  stop,  // true if no more data to load, false otherwise
+		"posts": posts, // the fetched posts
+	})
+}
+
 func CreatePost(c *fiber.Ctx) error {
 	// Ensure the user is authenticated
 	_, err := ValidateRequest(c)
