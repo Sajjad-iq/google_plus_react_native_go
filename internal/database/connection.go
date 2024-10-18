@@ -32,12 +32,7 @@ func Connect() {
 
 	fmt.Println("Database connection successfully established")
 
-	AutoMigrate(&models.User{})
-	AutoMigrate(&models.Post{})
-	AutoMigrate(&models.Like{})
-	AutoMigrate(&models.Comment{})
-	AutoMigrate(&models.Notification{})
-	AutoMigrate(&models.Actor{})
+	AutoMigrate(&models.User{}, &models.Post{}, &models.Like{}, &models.Comment{}, &models.Notification{}, &models.Actor{})
 
 	err = DB.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"").Error
 	if err != nil {

@@ -17,4 +17,10 @@ type User struct {
 	Role          string    `json:"role" gorm:"default:'user'"`
 	CreatedAt     time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt     time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+
+	// Relationships
+	Posts         []Post         `gorm:"foreignKey:AuthorID" json:"posts"`       // One-to-many (User -> Posts)
+	Comments      []Comment      `gorm:"foreignKey:UserID" json:"comments"`      // One-to-many (User -> Comments)
+	Likes         []Like         `gorm:"foreignKey:UserID" json:"likes"`         // One-to-many (User -> Likes)
+	Notifications []Notification `gorm:"foreignKey:UserID" json:"notifications"` // One-to-many (User -> Notifications)
 }

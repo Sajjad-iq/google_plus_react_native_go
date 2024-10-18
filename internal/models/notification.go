@@ -20,16 +20,17 @@ type ActionTypeArray []string
 
 // Notification represents a notification in the social media app
 type Notification struct {
-	ID                  uuid.UUID       `gorm:"type:uuid;default:uuid_generate_v4()" json:"id"` // Unique identifier for the notification
-	UserID              string          `gorm:"not null" json:"user_id"`                        // User receiving the notification
+	ID                  uuid.UUID       `gorm:"type:uuid;default:uuid_generate_v4()" json:"id"`
+	UserID              string          `gorm:"not null" json:"user_id"` // Foreign key to User
+	User                User            `gorm:"foreignKey:UserID"`       // Belongs to User
 	Actors              ActorArray      `gorm:"type:jsonb" json:"actors"`
-	NotificationContent string          `json:"notification_content"`             // Notification content
-	ReferenceContent    string          `json:"reference_content"`                // Notification content
-	ActionType          ActionTypeArray `gorm:"type:jsonb" json:"action_type"`    // Array of action types (e.g., 'like', 'comment', 'follow', 'mention')
-	ReferenceID         uuid.UUID       `gorm:"type:uuid" json:"reference_id"`    // ID referencing the related entity (e.g., post, comment, or user)
-	IsRead              bool            `gorm:"default:false" json:"is_read"`     // Whether the notification has been read
-	CreatedAt           time.Time       `gorm:"autoCreateTime" json:"created_at"` // Timestamp when the notification was created
-	UpdatedAt           time.Time       `gorm:"autoUpdateTime" json:"updated_at"` // Timestamp when the notification was last updated
+	NotificationContent string          `json:"notification_content"`
+	ReferenceContent    string          `json:"reference_content"`
+	ActionType          ActionTypeArray `gorm:"type:jsonb" json:"action_type"`
+	ReferenceID         uuid.UUID       `gorm:"type:uuid" json:"reference_id"`
+	IsRead              bool            `gorm:"default:false" json:"is_read"`
+	CreatedAt           time.Time       `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt           time.Time       `gorm:"autoUpdateTime" json:"updated_at"`
 }
 
 // Scan implements the sql.Scanner interface for ActorArray

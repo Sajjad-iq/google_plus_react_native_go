@@ -20,15 +20,17 @@ type MentionedUserArray []MentionedUser
 
 // Comment represents a comment on a post
 type Comment struct {
-	ID             uuid.UUID          `gorm:"type:uuid;default:uuid_generate_v4()" json:"id"` // Unique identifier for the comment
-	PostID         uuid.UUID          `gorm:"type:uuid;not null" json:"post_id"`              // Foreign key, references the post being commented on
-	UserID         string             `gorm:"not null" json:"user_id"`                        // Foreign key, references the user making the comment
-	AuthorName     string             `json:"author_name"`                                    // Author's name
-	AuthorAvatar   string             `json:"author_avatar"`                                  // Author's avatar URL
-	Content        string             `gorm:"type:text;not null" json:"content"`              // Content of the comment
-	CreatedAt      time.Time          `gorm:"autoCreateTime" json:"created_at"`               // Timestamp when the comment was created
-	UpdatedAt      time.Time          `gorm:"autoUpdateTime" json:"updated_at"`               // Timestamp when the comment was last updated
-	MentionedUsers MentionedUserArray `gorm:"type:jsonb" json:"mentioned_users"`              // Array of mentioned users stored as JSONB
+	ID             uuid.UUID          `gorm:"type:uuid;default:uuid_generate_v4()" json:"id"`
+	PostID         uuid.UUID          `gorm:"type:uuid;not null" json:"post_id"` // Foreign key to Post
+	Post           Post               `gorm:"foreignKey:PostID"`                 // Belongs to Post
+	UserID         string             `gorm:"not null" json:"user_id"`           // Foreign key to User
+	User           User               `gorm:"foreignKey:UserID"`                 // Belongs to User
+	AuthorName     string             `json:"author_name"`
+	AuthorAvatar   string             `json:"author_avatar"`
+	Content        string             `gorm:"type:text;not null" json:"content"`
+	CreatedAt      time.Time          `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt      time.Time          `gorm:"autoUpdateTime" json:"updated_at"`
+	MentionedUsers MentionedUserArray `gorm:"type:jsonb" json:"mentioned_users"` // Array of mentioned users stored as JSONB
 }
 
 // Scan implements the sql.Scanner interface for MentionedUserArray
