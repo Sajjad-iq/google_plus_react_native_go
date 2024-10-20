@@ -7,6 +7,7 @@ import (
 
 func UsersRoutesSetup(app *fiber.App) {
 	app.Get("/user/:id", handlers.GetTheUser)
+	app.Get("/search", handlers.SearchUsers) // Use query parameter for name
 	app.Post("/test", func(c *fiber.Ctx) error { return handlers.OAuthUserLogin(c) })
 	app.Get("/notifications", handlers.FetchNotificationsHandler)
 	app.Put("/notifications/read/:id", handlers.MarkNotificationsAsReadHandler)

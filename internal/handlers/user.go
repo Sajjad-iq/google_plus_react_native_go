@@ -1,6 +1,10 @@
 package handlers
 
 import (
+	"strconv"
+
+	"github.com/Sajjad-iq/google_plus_react_native_go/internal/database"
+	"github.com/Sajjad-iq/google_plus_react_native_go/internal/models"
 	"github.com/Sajjad-iq/google_plus_react_native_go/internal/storage"
 	"github.com/gofiber/fiber/v2"
 )
@@ -73,5 +77,39 @@ func GetTheUser(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"user": user,
+	})
+}
+
+func SearchUsers(c *fiber.Ctx) error {
+	// Ensure the user is authenticated
+	_, err := ValidateRequest(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized user",
+		})
+	}
+
+	name := c.Query("name") // Read the query parameter 'name'
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	limit, _ := strconv.Atoi(c.Query("limit", "10"))
+
+	if name == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Name query parameter is required",
+		})
+	}
+
+	var users []models.User
+	offset := (page - 1) * limit
+
+	// Search for users with pagination
+	if err := database.DB.Where("username ILIKE ?", "%"+name+"%").Limit(limit).Offset(offset).Find(&users).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Could not retrieve users",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"users": users, // Send 'users' array in the response
 	})
 }
